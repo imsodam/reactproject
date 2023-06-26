@@ -1,0 +1,135 @@
+*** 주의사항
+카카오맵을 사용한 경우에는 로컬호스트 클라이언트 포트번호(http://localhost:3000)
+배포할 호스팅의 도메인명을
+카카오맵 디벨로퍼 사이트에 플랫폼에 추가해햐 함
+
+*** 이미지들은 client>public 폴더에 있어야 함
+*** 이미지경로는 ". 빼고 /로 시작할 것"
+
+**** 서버연동하려면 
+- client, server 폴더를 만들고 node_modules 제외하고 복붙
+  client > src > setupProxy.js 파일 생성함(npm i -D http-proxy-middleware)
+- 루트폴더에 package.json이 있어야 npm i 하면 에러안남
+- 서버 연결하고 npm run dev
+
+**** client, server 폴더 각각에서 npm i > node_modules 생성
+    airbnb 폴더에서 npm i > node_modules 생성
+
+**** 개발환경에서 서버랑 통신 테스트 
+0. npm i -D http-proxy-middleware
+1. client > src > setupProxy.js 파일 생성하여 아래 코드 입력
+
+  const { createProxyMiddleware } = require('http-proxy-middleware');  
+
+  module.exports = function(app) {
+
+      // client 컴포넌트들에서 서버에 요청한 경로와 서버에서 설정한 포트번호 입력
+      app.use( 
+          createProxyMiddleware("/auth/login", {
+              target: "http://localhost:8001",
+              changeOrigin: true
+          })
+      );
+
+  }
+
+3. server에서 web.js에서 아래처럼 수정
+    const corsOptions = {
+        origin:'http://localhost:8001', credentials:true
+    }
+4. 루트 폴더에서 npm run dev 실행하여 테스트함
+
+
+
+**** 카페24 호스팅에 배포할때는 아래처럼 수정
+1. client > src > setupProxy.js 파일은 그대로 둠
+2. client 컴포넌트들의 서버 요청 경로 앞에 localhost:3000 대신에 도메인명 입력
+   axios.post('http://앱이름.cafe24app.com/login', {   })
+3. server에서 web.js에서 아래처럼 수정
+    const corsOptions = {
+        origin:'http://앱이름.cafe24app.com', credentials:true
+    }
+4. 루트 폴더에서 npm run build (server 이전에 build한 폴더가 있으면 삭제하고)
+5. package.json, web.js, router 파일들의 모든 경로 앞에 아래 경로를 붙임
+   /home/hosting_users/카페24사용자아이디/apps/카페24사용자아이디_앱이름/
+
+   /home/hosting_users/puuding/apps/puuding_reactproject/
+   
+   <server의 package.json 파일>
+    "scripts": {
+        "start": "node ./web.js" <=를 아래 절대경로로 수정함
+    },    
+    "scripts": {
+        "start": "node /home/hosting_users/oktobatairbnb/apps/oktobatairbnb_oktsalt/web.js"
+    },
+
+   <web.js 파일>
+   import globalRouter from '/home/hosting_users/oktobatairbnb/apps/oktobatairbnb_oktsalt/routers/globalRouter.js'
+   app.use(express.static(path.join(__dirname, '/home/hosting_users/oktobatairbnb/apps/oktobatairbnb_oktsalt/build')))
+   
+   <authRouter.js, boardRouter.js>
+   import {db} from '/home/hosting_users/oktobatairbnb/apps/oktobatairbnb_oktsalt/db.js'
+   
+   <globalRouter.js>
+   globalRouter.get('/', (req, res)=>{
+     res.sendFile(path.join(__dirname, '/home/hosting_users/oktobatairbnb/apps/oktobatairbnb_oktsalt/build/index.html'))
+   })
+
+6. 깃 저장소에 배포하기 전에 Public Key 생성하여 등록해야 함
+   vsc 터미널 bash 창에서
+   ssh-keygen -t rsa -C '본인이메일주소' 입력하고 엔터
+   Enter file in which to save the key (/c/Users/nedry/.ssh/id_rsa) : 공용키 저장경로 메모해놓고 그냥 엔터
+   Enter passphrase (empty for no passphrase) : 비밀번호는 간단하게 설정(보이지는 않지만 입력되고 있음)
+   Enter sam passphrase again : 다시 한번 비밀번호 입력하고 엔터(보이지는 않지만 입력되고 있음)
+
+7. 카페24 "나의 서비스 관리" 
+   내가 신청한 아이디 목록에서 아이디 선택하고 "확인"
+   (1) 왼쪽 "Publick Key 관리"에서 Publick Key 등록
+      - 6번에서 메모한 저장경로로 이동하여 메모장에서 id_rsa.pub 파일 열어서 보이는 내용 전부 복사해서 등록
+   (2) 왼쪽 "앱 생성관리" 눌러서 "Key 할당"하고 git 저장소명 복사하고 vsc로 돌아옴
+
+8. bash 창을 열어서 server 안의 모든 파일을 git 저장소에 배포하기
+   cd server
+   git init
+   git add .
+   git commit -m '커밋메세지'
+   git remote add (저장소별명) (카페24에서 복사한 git 저장소명) 괄호는 뺄것
+   git remote show (저장소별명은 한번만 만들고 생각안나면 show로 확인함)
+   git push 저장소별명 +master (배포 완료)
+
+9. 카페24에서 앱을 중지했다가 다시 실행하고 브라우저에서 도메인 입력하여 확인함
+
+
+**** tailwindcss 라이브러리 사용하기
+사용방법 설명 : https://velog.io/@davina96/CSS-Tailwind 
+npm install tailwindcss@latest postcss@latest autoprefixer@latest
+npx tailwindcss init : tailwind.config.js 파일 생성하고 다음 코드 입력
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+
+postcss.config.js 파일 생성하고 다음 코드 입력
+    module.exports = {
+    plugins: [
+        require('postcss-import'),
+        require('tailwindcss'),
+        require('autoprefixer'),
+    ]
+    }
+
+index.css 파일에 세줄 추가
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+App.js 파일에 다음 한줄 추가
+import "tailwindcss/tailwind.css";
+
+샘플 : https://tailwind-elements.com/docs/standard/data/tables/
